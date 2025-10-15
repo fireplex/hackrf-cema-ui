@@ -1,4 +1,12 @@
 {
+    "recording": {
+        "outputFile": "transmission.wav",
+        "lnaGain": "24",
+        "vgaGain": "28",
+        "frequency": "433920000",
+        "squelchEnabled": false,
+        "squelchThreshold": "-10"
+    },
     "hackrfRxSN": "0000000000000000f75461dc28349cc3",
-    "hackrfTxSN": "0000000000000000f75461dc28349cc3"
+    "hackrfTxSN": "0000000000000000d07864dc24985887"
 }
