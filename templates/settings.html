@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <title>HackRF UI - Settings</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
+  <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.js') }}"></script>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">HackRF UI</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" aria-current="page" href="/">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="#">Settings</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <br />
+
+  <div class="card">
+    <div class="card-header">
+      General
+    </div>
+    <div class="card-body">
+      <div class="alert alert-warning alert-dismissible fade show" role="alert" id="errorMessageDiv">
+        <strong class="font-bold">Error:</strong>
+        <span class="block sm:inline" id="errorText"></span>
+      </div>
+      <form id="general">
+        <div class="mb-3">
+          <label for="hackrfRxSN" class="form-label">HackRF RX Serial Number</label>
+          <select class="form-select" aria-label="hackrfRxSN" aria-describedby="hackrfRxSNHelp" id="hackrfRxSN">
+            <option selected>Select one</option>
+          </select>
+          <div id="hackrfRxSNHelp" class="form-text">The HackRF's S/N to receive on.</div>
+        </div>
+        <div class="mb-3">
+          <label for="hackrfTxSN" class="form-label">HackRF TX Serial Number</label>
+          <select class="form-select" aria-label="hackrfTxSN" aria-describedby="hackrfTxSNHelp" id="hackrfTxSN">
+            <option selected>Select one</option>
+          </select>
+          <div id="hackrfTxSNHelp" class="form-text">The HackRF's S/N to transmit on.</div>
+        </div>
+        <!--<button type="submit" class="btn btn-primary">Submit</button>-->
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Select the form and the select element
+      const myForm = document.getElementById('general');
+      const hackrfRxSN = document.getElementById('hackrfRxSN');
+
+      // Add an event listener for the 'change' event
+      hackrfRxSN.addEventListener('change', function () {
+        // When the select value changes, submit the form
+        console.log('Select changed, submitting form...');
+        //myForm.submit();
+      });
+    });
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const rxSelect = document.getElementById('hackrfRxSN');
+      const txSelect = document.getElementById('hackrfTxSN');
+      const errorMessageDiv = document.getElementById('errorMessage');
+      const errorTextSpan = document.getElementById('errorText');
+
+      // --- UI Helper Functions ---
+
+      /**
+       * Displays an error message in the UI.
+       * @param {string} message - The error message to display.
+       */
+      const showErrorMessage = (message) => {
+        errorTextSpan.textContent = message;
+        errorMessageDiv.classList.remove('hidden');
+      };
+
+      /**
+       * Populates a select element with device options and pre-selects a value if provided.
+       * @param {HTMLSelectElement} selectElement - The <select> element to populate.
+       * @param {Array<Object>} devices - Array of device objects from the API.
+       * @param {string|null|undefined} selectedSn - The serial number to pre-select. Can be null or undefined if not found.
+       */
+      const populateSelect = (selectElement, devices, selectedSn) => {
+        selectElement.innerHTML = ''; // Clear existing options
+        selectElement.classList.remove('select-loading');
+
+        if (!devices || devices.length === 0) {
+          const noDeviceOption = document.createElement('option');
+          noDeviceOption.value = "";
+          noDeviceOption.textContent = "No devices found";
+          selectElement.appendChild(noDeviceOption);
+          selectElement.disabled = true;
+          return;
+        }
+
+        selectElement.disabled = false;
+
+        // Add a default, non-selectable option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select a device";
+        defaultOption.disabled = true; // Makes it unselectable
+        defaultOption.selected = true; // Selected by default
+        selectElement.appendChild(defaultOption);
+
+        devices.forEach(device => {
+          const option = document.createElement('option');
+          const serialNumber = device['Serial number'];
+          option.value = serialNumber;
+          option.textContent = serialNumber;
+          // If a saved serial number exists for this specific dropdown, select it.
+          if (serialNumber === selectedSn) {
+            option.selected = true;
+            // The default option is no longer selected
+            defaultOption.selected = false;
+          }
+          selectElement.appendChild(option);
+        });
+      };
+
+      function parseHackrfInfo(rawText) {
+        // The main object to be returned
+        const result = {
+          devices: []
+        };
+
+        // Split the entire output by "Found HackRF".
+        // The first element is the header, the rest are device blocks.
+        const blocks = rawText.trim().split('Found HackRF');
+        const headerBlock = blocks.shift(); // Removes and returns the first element
+
+        // --- 1. Parse the Header/Root Block ---
+        headerBlock.trim().split('\n').forEach(line => {
+          const colonIndex = line.indexOf(':');
+          if (colonIndex > -1) {
+            const key = line.substring(0, colonIndex).trim();
+            const value = line.substring(colonIndex + 1).trim();
+            result[key] = value;
+          }
+        });
+
+        // --- 2. Parse Each Device Block ---
+        blocks.forEach(block => {
+          const deviceObject = {};
+          const lines = block.trim().split('\n');
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const colonIndex = line.indexOf(':');
+
+            if (colonIndex > -1) {
+              const key = line.substring(0, colonIndex).trim();
+              let value = line.substring(colonIndex + 1).trim();
+
+              // If the value is empty, the actual value is on the next line
+              if (value === '' && (i + 1) < lines.length) {
+                value = lines[i + 1].trim();
+                i++; // Increment i to skip the next line in the next iteration
+              }
+
+              deviceObject[key] = value;
+            }
+          }
+
+          // Add the fully parsed device object to the devices array
+          if (Object.keys(deviceObject).length > 0) {
+            result.devices.push(deviceObject);
+          }
+        });
+
+        return result;
+      }
+
+      // --- Main Logic ---
+
+      /**
+       * Main async function to fetch data and initialize the device selectors.
+       */
+      const initializeDeviceSelectors = async () => {
+        let savedSettings = {};
+        let availableDevices = [];
+
+        // Step 1: Attempt to load saved settings from settings.json.
+        // This is not critical; we'll continue with an empty object if it fails.
+        try {
+          const response = await fetch('/static/settings.json');
+          if (response.ok) {
+            console.log("settings.json: 200");
+            savedSettings = await response.json();
+          } else {
+            console.warn(`Could not load settings.json. Status: ${response.status}. Proceeding without saved values.`);
+          }
+        } catch (error) {
+          console.warn('Error fetching settings.json:', error);
+        }
+
+        // Step 2: Fetch the list of available devices from the API.
+        // This is critical. If it fails, we show an error and stop.
+        try {
+          const response = await fetch('/api/hackrf-info');
+          if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+          }
+          const data = await response.json();
+          output = parseHackrfInfo(data.output);
+          availableDevices = output.devices || [];
+          console.log("available devices: " + data);
+        } catch (error) {
+          console.error('Failed to fetch HackRF info from API:', error);
+          showErrorMessage('Could not retrieve the list of connected devices from the server.');
+          populateSelect(rxSelect, [], null);
+          populateSelect(txSelect, [], null);
+          return; // Stop execution if we can't get devices
+        }
+
+        // Step 3: Populate each dropdown individually.
+        // We pass the full list of devices to both, but only the specific saved key.
+
+        // Populate the Rx dropdown. Look specifically for the `hackrfRxSN` key in settings.
+        populateSelect(rxSelect, availableDevices, savedSettings.hackrfRxSN);
+
+        // Populate the Tx dropdown. Look specifically for the `hackrfTxSN` key in settings.
+        populateSelect(txSelect, availableDevices, savedSettings.hackrfTxSN);
+      };
+
+      // Start the process
+      initializeDeviceSelectors();
+    });
+  </script>
+</body>
