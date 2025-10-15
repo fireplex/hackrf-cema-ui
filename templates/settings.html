@@ -59,21 +59,7 @@
     </div>
   </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      // Select the form and the select element
-      const myForm = document.getElementById('general');
-      const hackrfRxSN = document.getElementById('hackrfRxSN');
-
-      // Add an event listener for the 'change' event
-      hackrfRxSN.addEventListener('change', function () {
-        // When the select value changes, submit the form
-        console.log('Select changed, submitting form...');
-        //myForm.submit();
-      });
-    });
-  </script>
-
+  <!--Settings handler-->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const rxSelect = document.getElementById('hackrfRxSN');
@@ -83,57 +69,9 @@
 
       // --- UI Helper Functions ---
 
-      /**
-       * Displays an error message in the UI.
-       * @param {string} message - The error message to display.
-       */
       const showErrorMessage = (message) => {
         errorTextSpan.textContent = message;
         errorMessageDiv.classList.remove('hidden');
-      };
-
-      /**
-       * Populates a select element with device options and pre-selects a value if provided.
-       * @param {HTMLSelectElement} selectElement - The <select> element to populate.
-       * @param {Array<Object>} devices - Array of device objects from the API.
-       * @param {string|null|undefined} selectedSn - The serial number to pre-select. Can be null or undefined if not found.
-       */
-      const populateSelect = (selectElement, devices, selectedSn) => {
-        selectElement.innerHTML = ''; // Clear existing options
-        selectElement.classList.remove('select-loading');
-
-        if (!devices || devices.length === 0) {
-          const noDeviceOption = document.createElement('option');
-          noDeviceOption.value = "";
-          noDeviceOption.textContent = "No devices found";
-          selectElement.appendChild(noDeviceOption);
-          selectElement.disabled = true;
-          return;
-        }
-
-        selectElement.disabled = false;
-
-        // Add a default, non-selectable option
-        const defaultOption = document.createElement('option');
-        defaultOption.value = "";
-        defaultOption.textContent = "Select a device";
-        defaultOption.disabled = true; // Makes it unselectable
-        defaultOption.selected = true; // Selected by default
-        selectElement.appendChild(defaultOption);
-
-        devices.forEach(device => {
-          const option = document.createElement('option');
-          const serialNumber = device['Serial number'];
-          option.value = serialNumber;
-          option.textContent = serialNumber;
-          // If a saved serial number exists for this specific dropdown, select it.
-          if (serialNumber === selectedSn) {
-            option.selected = true;
-            // The default option is no longer selected
-            defaultOption.selected = false;
-          }
-          selectElement.appendChild(option);
-        });
       };
 
       function parseHackrfInfo(rawText) {
@@ -189,56 +127,84 @@
         return result;
       }
 
+      const populateSelectOptions = (selectElement, devices) => {
+        selectElement.innerHTML = ''; // Clear existing options
+        selectElement.classList.remove('select-loading');
+
+        if (!devices || devices.length === 0) {
+          const noDeviceOption = document.createElement('option');
+          noDeviceOption.value = "";
+          noDeviceOption.textContent = "No devices found";
+          selectElement.appendChild(noDeviceOption);
+          selectElement.disabled = true;
+          return;
+        }
+
+        selectElement.disabled = false;
+
+        // Add a default, placeholder option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select a device";
+        selectElement.appendChild(defaultOption);
+
+        devices.forEach(device => {
+          const option = document.createElement('option');
+          const serialNumber = device['Serial number'];
+          option.value = serialNumber;
+          option.textContent = serialNumber;
+          selectElement.appendChild(option);
+        });
+      };
+
       // --- Main Logic ---
 
-      /**
-       * Main async function to fetch data and initialize the device selectors.
-       */
       const initializeDeviceSelectors = async () => {
         let savedSettings = {};
         let availableDevices = [];
 
-        // Step 1: Attempt to load saved settings from settings.json.
-        // This is not critical; we'll continue with an empty object if it fails.
+        // Step 1: Attempt to load saved settings, ensuring we don't use a cached version.
         try {
-          const response = await fetch('/static/settings.json');
+          // Added { cache: 'no-cache' } to prevent stale settings file.
+          const response = await fetch('/static/settings.json', { cache: 'no-cache' });
           if (response.ok) {
-            console.log("settings.json: 200");
             savedSettings = await response.json();
           } else {
-            console.warn(`Could not load settings.json. Status: ${response.status}. Proceeding without saved values.`);
+            console.warn(`Could not load settings.json. Status: ${response.status}.`);
           }
         } catch (error) {
           console.warn('Error fetching settings.json:', error);
         }
 
-        // Step 2: Fetch the list of available devices from the API.
-        // This is critical. If it fails, we show an error and stop.
+        // Step 2: Fetch the list of available devices from the API. This is critical.
         try {
           const response = await fetch('/api/hackrf-info');
           if (!response.ok) {
             throw new Error(`API request failed with status ${response.status}`);
           }
           const data = await response.json();
-          output = parseHackrfInfo(data.output);
+          const output = parseHackrfInfo(data.output);
           availableDevices = output.devices || [];
-          console.log("available devices: " + data);
         } catch (error) {
           console.error('Failed to fetch HackRF info from API:', error);
           showErrorMessage('Could not retrieve the list of connected devices from the server.');
-          populateSelect(rxSelect, [], null);
-          populateSelect(txSelect, [], null);
-          return; // Stop execution if we can't get devices
+          populateSelectOptions(rxSelect, []);
+          populateSelectOptions(txSelect, []);
+          return; // Stop execution
         }
 
-        // Step 3: Populate each dropdown individually.
-        // We pass the full list of devices to both, but only the specific saved key.
+        // Step 3: Populate the dropdowns with all available devices.
+        populateSelectOptions(rxSelect, availableDevices);
+        populateSelectOptions(txSelect, availableDevices);
 
-        // Populate the Rx dropdown. Look specifically for the `hackrfRxSN` key in settings.
-        populateSelect(rxSelect, availableDevices, savedSettings.hackrfRxSN);
-
-        // Populate the Tx dropdown. Look specifically for the `hackrfTxSN` key in settings.
-        populateSelect(txSelect, availableDevices, savedSettings.hackrfTxSN);
+        // Step 4: Set the selected value based on the loaded settings.
+        // This is more reliable than setting 'selected' during option creation.
+        if (savedSettings.hackrfRxSN) {
+          rxSelect.value = savedSettings.hackrfRxSN;
+        }
+        if (savedSettings.hackrfTxSN) {
+          txSelect.value = savedSettings.hackrfTxSN;
+        }
       };
 
       // Start the process
