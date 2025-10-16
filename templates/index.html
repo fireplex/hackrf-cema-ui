@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <title>HackRF UI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    #recordLog { scroll-behavior: smooth; }
+    #recordLog {
+      scroll-behavior: smooth;
+    }
   </style>
   <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.js') }}"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
+
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary">
     <div class="container-fluid">
@@ -21,6 +26,7 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav">
           <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/files">Files</a></li>
           <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
         </ul>
       </div>
@@ -51,7 +57,7 @@
           <div class="card">
             <div class="card-body">
               <h5 class="card-title">Record</h5>
-              <form id="settingsForm">
+              <form id="recordSettingsForm">
                 <div class="mb-3">
                   <label for="outputFile" class="form-label">Output File</label>
                   <input type="text" class="form-control" id="outputFile" placeholder="e.g., transmission.wav" required>
@@ -69,23 +75,67 @@
                 </div>
                 <div class="mb-3">
                   <label for="frequency" class="form-label">Frequency (Hz)</label>
-                  <input type="number" class="form-control" id="frequency" minlength="9" maxlength="9" pattern="[0-9]{9}" required>
-                  <div id="frequencyHelp" class="form-text">Input a frequency between 10MHz-6GHz, e.g., 433920000 for 433.92MHz</div>
+                  <input type="number" class="form-control" id="frequency" minlength="9" maxlength="9"
+                    pattern="[0-9]{9}" required>
+                  <div id="frequencyHelp" class="form-text">Input a frequency between 10MHz-6GHz, e.g., 433920000 for
+                    433.92MHz</div>
                 </div>
                 <div class="input-group mb-3">
                   <div class="input-group-text">
-                    <label class="form-check-label me-2" for="squelchEnabled">Enable Squelch</label>
+                    <label class="form-check-label me-2 text-muted" for="squelchEnabled">Enable Squelch
+                      (disabled)</label>
                     <input class="form-check-input mt-0" type="checkbox" id="squelchEnabled" disabled>
                   </div>
-                  <input type="text" class="form-control" id="squelchThreshold" placeholder="Squelch Threshold (dB)" minlength="1" maxlength="3" pattern="-?[0-9]{1,2}" required disabled>
+                  <input type="text" class="form-control" id="squelchThreshold" placeholder="Squelch Threshold (dB)"
+                    disabled>
                 </div>
-                <div id="squelchHelp" class="form-text">Input a squelch threshold between -1 and -100 dB (Only required if enabled)</div>
+                <div id="squelchHelp" class="form-text text-muted">Squelch is temporarily disabled.</div>
               </form>
-              <div id="recordLog" class="mt-3 p-3 bg-dark text-white rounded font-monospace overflow-auto" style="background-color: #000; max-height: 128px;">
+              <div id="recordLog" class="mt-3 p-3 bg-dark text-white rounded font-monospace overflow-auto"
+                style="background-color: #000; max-height: 256px;">
                 <p class="text-secondary">Recording status will appear here...</p>
               </div>
-              <button type="button" class="btn btn-primary" id="startButton">Start Recording</button>
-              <button type="button" class="btn btn-danger" id="stopButton">Stop Recording</button>
+              <button type="button" class="btn btn-primary" id="startRecordButton">Start Recording</button>
+              <button type="button" class="btn btn-danger" id="stopRecordButton">Stop Recording</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Transmit</h5>
+              <form id="transmitSettingsForm">
+                <!-- Removed old inputFile text field, now using selector below -->
+                <div class="mb-3">
+                  <label for="txGain" class="form-label">TX Gain</label>
+                  <input type="number" class="form-control" id="txGain" min="0" max="30" step="1" required>
+                  <div id="txGainHelp" class="form-text">Input a gain between 0-47dB</div>
+                </div>
+                <div class="mb-3">
+                  <label for="frequency" class="form-label">Frequency (Hz)</label>
+                  <input type="number" class="form-control" id="frequency" minlength="9" maxlength="9"
+                    pattern="[0-9]{9}" required>
+                  <div id="frequencyHelp" class="form-text">Input a frequency between 10MHz-6GHz, e.g., 433920000 for
+                    433.92MHz</div>
+                </div>
+                <div class="mb-3">
+                  <label for="repeat" class="form-label">Repeat TX?</label>
+                  <input type="checkbox" class="form-check-input" id="repeat">
+                  <div id="repeatHelp" class="form-text">Check to continuously repeat the transmission</div>
+                </div>
+                <div class="mb-3">
+                  <label for="transmitInputFile">Transmit Input File:</label>
+                  <div class="input-group">
+                    <select id="transmitInputFile" class="form-select" style="margin-bottom:8px;"></select>
+                    <button type="button" class="btn btn-outline-info" id="refreshInputFilesBtn" style="margin-left:8px;">Refresh Input Files</button>
+                  </div>
+                </div>
+              </form>
+              <div id="transmitLog" class="mt-3 p-3 bg-dark text-white rounded font-monospace overflow-auto"
+                style="background-color: #000; max-height: 256px;">
+                <p class="text-secondary">Transmission status will appear here...</p>
+              </div>
+              <button type="button" class="btn btn-primary" id="startTransmitButton">Start Transmitting</button>
+              <button type="button" class="btn btn-danger" id="stopTransmitButton">Stop Transmitting</button>
             </div>
           </div>
         </div>
@@ -93,7 +143,30 @@
     </div>
   </div>
 
+  <div class="accordion mt-4" id="spectrumAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="spectrumHeading">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#spectrumCollapse" aria-expanded="true" aria-controls="spectrumCollapse">
+          Spectrum Display <span id="spectrumRefreshIndicator" style="font-size:0.9em; color:#0ff; margin-left:8px;">(Live)</span>
+        </button>
+      </h2>
+      <div id="spectrumCollapse" class="accordion-collapse collapse show" aria-labelledby="spectrumHeading" data-bs-parent="#spectrumAccordion">
+        <div class="accordion-body">
+          <canvas id="spectrumDisplay" width="1024" height="400"
+            style="background:#000; border-radius:8px; width:100%; max-width:1024px; box-shadow:0 0 24px #0ff8;"></canvas>
+          <div id="spectrumInfo" class="text-secondary small mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+      // Manual refresh button for transmit input files
+      document.getElementById('refreshInputFilesBtn').onclick = function() {
+        socket.emit('request_processed_files');
+      };
+    // Initialize Socket.IO client FIRST! This must be the very first line in the script block.
+    const socket = io();
     // Utility for element selection
     const $ = id => document.getElementById(id);
 
@@ -142,61 +215,302 @@
       try {
         const response = await fetch('/static/settings.json');
         if (!response.ok) return;
-        const { recording } = await response.json();
+        const { recording, transmitting } = await response.json();
         if (recording) {
           $('outputFile').value = recording.outputFile || '';
           $('lnaGain').value = recording.lnaGain || 0;
           $('vgaGain').value = recording.vgaGain || 0;
-          $('frequency').value = recording.frequency || 0;
+          $('recordSettingsForm').querySelector('#frequency').value = recording.frequency || 0;
           $('squelchEnabled').checked = recording.squelchEnabled || false;
           $('squelchThreshold').value = recording.squelchThreshold || '';
+        }
+
+        if (transmitting) {
+          const selector = $('transmitInputFile');
+          if (selector && transmitting.inputFile) {
+            selector.value = transmitting.inputFile;
+          }
+          $('txGain').value = transmitting.txGain || 0;
+          $('transmitSettingsForm').querySelector('#frequency').value = transmitting.frequency || 0;
+          $('repeat').checked = transmitting.repeat || false;
         }
       } catch (e) { console.error('Could not load or parse settings:', e); }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      const startBtn = $('startButton'), stopBtn = $('stopButton'), logBox = $('recordLog');
-      const logToBox = (msg, color = 'text-white-50') => {
+      // --- Socket.IO event handlers that need DOM elements ---
+      socket.on('recording_status', function (data) {
+        if (data.hasOwnProperty('running')) {
+          // This is a status query response
+          if (data.running) {
+            startRxBtn.disabled = true;
+            stopRxBtn.disabled = false;
+          } else {
+            startRxBtn.disabled = false;
+            stopRxBtn.disabled = true;
+          }
+          return;
+        }
+        if (data.error) {
+          logToBox(recordLogBox, `Error: ${data.error}`, 'text-danger');
+          startRxBtn.disabled = false;
+          stopRxBtn.disabled = true;
+        }
+        if (data.message) {
+          logToBox(recordLogBox, data.message, 'text-success');
+          const msg = data.message.toLowerCase();
+          if (msg.includes('started')) {
+            startRxBtn.disabled = true;
+            stopRxBtn.disabled = false;
+          } else if (msg.includes('stopped')) {
+            startRxBtn.disabled = false;
+            stopRxBtn.disabled = true;
+          }
+        }
+      });
+      // Query backend for current recording state on load (after socket is initialized)
+      socket.emit('query_recording_status');
+      // Display HackRF info on page load
+      hackrfRefresh();
+      // Record section
+      const startRxBtn = $('startRecordButton');
+      const stopRxBtn = $('stopRecordButton');
+      const recordLogBox = $('recordLog');
+      // Transmit section
+      const startTxBtn = $('startTransmitButton');
+      const stopTxBtn = $('stopTransmitButton');
+      const transmitLogBox = $('transmitLog');
+      let transmitPolling = null;
+
+      // Generic log function for any log box
+      const logToBox = (logBox, msg, color = 'text-white-50') => {
         if (logBox.children.length === 1 && logBox.firstChild.textContent.includes('...')) logBox.innerHTML = '';
         const ts = new Date().toLocaleTimeString();
         logBox.insertAdjacentHTML('beforeend', `<p class="mb-1"><span class="text-secondary">${ts}</span> &gt; <span class="${color}">${msg}</span></p>`);
         logBox.scrollTop = logBox.scrollHeight;
-      };
-
-      startBtn.onclick = async () => {
-        logToBox('Starting recording...', 'text-warning');
-        startBtn.disabled = true;
-        try {
-          const response = await fetch('/api/start-recording', { method: 'POST' });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Unknown error.');
-          logToBox('Recording in progress.', 'text-success');
-          stopBtn.disabled = false;
-        } catch (e) {
-          logToBox(`Error: ${e.message}`, 'text-danger');
-          startBtn.disabled = false;
+        // Autoscroll page if logbox is below viewport
+        const rect = logBox.getBoundingClientRect();
+        if (rect.bottom > window.innerHeight) {
+          logBox.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
       };
 
-      stopBtn.onclick = async () => {
-        logToBox('Stopping recording...', 'text-warning');
-        stopBtn.disabled = true;
-        try {
-          const response = await fetch('/api/stop-recording', { method: 'POST' });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Unknown error.');
-          logToBox('Recording stopped successfully.', 'text-white-50');
-          startBtn.disabled = false;
-        } catch (e) {
-          logToBox(`Error: ${e.message}`, 'text-danger');
-          stopBtn.disabled = false;
-        }
+      // Record handlers
+      startRxBtn.onclick = () => {
+        const outputFile = $('outputFile').value || 'unknown';
+        logToBox(recordLogBox, `Starting recording to <strong>${outputFile}</strong>...`, 'text-warning');
+        startRxBtn.disabled = true;
+        stopRxBtn.disabled = false;
+        socket.emit('start_record', {});
       };
+      stopRxBtn.onclick = () => {
+        const outputFile = $('outputFile').value || 'unknown';
+        logToBox(recordLogBox, `Stopping recording to <strong>${outputFile}</strong>...`, 'text-warning');
+        stopRxBtn.disabled = true;
+        startRxBtn.disabled = false;
+        socket.emit('stop_recording');
+      };
+      // Transmit handlers
+      startTxBtn.onclick = () => {
+        const selector = $('transmitInputFile');
+        const inputFile = selector ? selector.value : '';
+        logToBox(transmitLogBox, `Starting transmission from <strong>${inputFile}</strong>...`, 'text-warning');
+        startTxBtn.disabled = true;
+        stopTxBtn.disabled = false;
+        socket.emit('start_transmit', {});
+      };
+      stopTxBtn.onclick = () => {
+        const selector = $('transmitInputFile');
+        const inputFile = selector ? selector.value : '';
+        logToBox(transmitLogBox, `Stopping transmission from <strong>${inputFile}</strong>...`, 'text-warning');
+        stopTxBtn.disabled = true;
+        startTxBtn.disabled = false;
+        socket.emit('stop_transmit');
+      };
+
+      // Transmit status event handler (mirror record logic)
+      socket.on('transmit_status', function(data) {
+        // Always log any backend info to the transmit log box
+        if (data.hasOwnProperty('running')) {
+          logToBox(transmitLogBox, data.running ? 'Transmission is running.' : 'Transmission is stopped.', 'text-info');
+          if (data.running) {
+            startTxBtn.disabled = true;
+            stopTxBtn.disabled = false;
+          } else {
+            startTxBtn.disabled = false;
+            stopTxBtn.disabled = true;
+          }
+        }
+        if (data.error) {
+          logToBox(transmitLogBox, `Error: ${data.error}`, 'text-danger');
+          startTxBtn.disabled = false;
+          stopTxBtn.disabled = true;
+        }
+        if (data.message) {
+          logToBox(transmitLogBox, data.message, 'text-success');
+          const msg = data.message.toLowerCase();
+          if (msg.includes('started')) {
+            startTxBtn.disabled = true;
+            stopTxBtn.disabled = false;
+          } else if (msg.includes('stopped') || msg.includes('finished')) {
+            startTxBtn.disabled = false;
+            stopTxBtn.disabled = true;
+          }
+        }
+      });
+      // Query backend for current transmit state on load
+      socket.emit('query_transmit_status');
+
+      // --- Socket.IO for processed file updates ---
+      function updateTransmitInputSelector(files) {
+        const selector = document.getElementById('transmitInputFile');
+        const current = selector.value;
+        selector.innerHTML = '';
+        files.forEach(file => {
+          const option = document.createElement('option');
+          option.value = file;
+          option.textContent = file;
+          selector.appendChild(option);
+        });
+        // Try to keep the current selection
+        if (current && files.includes(current)) {
+          selector.value = current;
+        } else if (files.length > 0) {
+          selector.value = files[0];
+        }
+      }
+
+      socket.on('processed_files_update', function (data) {
+        updateTransmitInputSelector(data.files);
+        // Optionally, update selector value if new file appeared
+        const selector = $('transmitInputFile');
+        if (selector && data.files.length > 0 && !data.files.includes(selector.value)) {
+          selector.value = data.files[data.files.length - 1];
+        }
+      });
+
+      // On initial load, fetch processed files in case no event arrives
+      window.addEventListener('DOMContentLoaded', function () {
+        // On initial load, request processed files via socket
+        socket.emit('request_processed_files');
+      });
+
+      // --- Spectrum Display ---
+      const spectrumCanvas = document.getElementById('spectrumDisplay');
+      let spectrumCtx = null;
+      if (spectrumCanvas) {
+        spectrumCtx = spectrumCanvas.getContext('2d');
+      }
+      const WATERFALL_HEIGHT = spectrumCanvas ? spectrumCanvas.height : 200;
+      const WATERFALL_HISTORY = WATERFALL_HEIGHT;
+      let waterfall = [];
+      let peakHold = null;
+      function drawSpectrum(data) {
+        if (!spectrumCtx) return;
+        // Black background
+        spectrumCtx.fillStyle = '#000';
+        spectrumCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+        // Waterfall: add new spectrum to history
+        if (data && data.length) {
+          waterfall.unshift([...data]);
+          if (waterfall.length > WATERFALL_HISTORY) waterfall.pop();
+          // Peak hold
+          if (!peakHold || peakHold.length !== data.length) {
+            peakHold = [...data];
+          } else {
+            for (let i = 0; i < data.length; i++) {
+              if (data[i] > peakHold[i]) peakHold[i] = data[i];
+            }
+          }
+        }
+        // Draw waterfall (KrakenSDR style: color-mapped, scrolls down)
+        for (let row = 0; row < waterfall.length; row++) {
+          const spectrum = waterfall[row];
+          for (let i = 0; i < spectrum.length; i++) {
+            const x = (i / spectrum.length) * spectrumCanvas.width;
+            // KrakenSDR color mapping: blue (low) to cyan/green/yellow (high)
+            const v = Math.max(0, Math.min(1, spectrum[i]));
+            let r = 0, g = 0, b = 0;
+            if (v < 0.33) {
+              b = 255 * (0.5 + v * 1.5);
+              g = 255 * (v * 1.5);
+            } else if (v < 0.66) {
+              g = 255 * (0.5 + (v - 0.33) * 1.5);
+              b = 255 * (1 - (v - 0.33) * 1.5);
+            } else {
+              r = 255 * ((v - 0.66) * 3);
+              g = 255;
+            }
+            const color = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+            spectrumCtx.fillStyle = color;
+            spectrumCtx.fillRect(x, row, spectrumCanvas.width / spectrum.length, 1);
+          }
+        }
+        // Vertical grid lines (KrakenSDR: faint, spaced)
+        spectrumCtx.strokeStyle = 'rgba(80,80,80,0.5)';
+        spectrumCtx.lineWidth = 1;
+        for (let i = 0; i <= 8; i++) {
+          let x = (i / 8) * spectrumCanvas.width;
+          spectrumCtx.beginPath();
+          spectrumCtx.moveTo(x, 0);
+          spectrumCtx.lineTo(x, spectrumCanvas.height);
+          spectrumCtx.stroke();
+        }
+        // Draw spectrum line (KrakenSDR: cyan)
+        spectrumCtx.beginPath();
+        spectrumCtx.strokeStyle = '#00ffe7';
+        spectrumCtx.lineWidth = 2.5;
+        for (let i = 0; i < data.length; i++) {
+          const x = (i / data.length) * spectrumCanvas.width;
+          const y = spectrumCanvas.height - (data[i] * spectrumCanvas.height);
+          if (i === 0) spectrumCtx.moveTo(x, y);
+          else spectrumCtx.lineTo(x, y);
+        }
+        spectrumCtx.stroke();
+        // Draw peak hold line (KrakenSDR: yellow)
+        if (peakHold && peakHold.length === data.length) {
+          spectrumCtx.beginPath();
+          spectrumCtx.strokeStyle = '#ffff00';
+          spectrumCtx.lineWidth = 1.5;
+          for (let i = 0; i < peakHold.length; i++) {
+            const x = (i / peakHold.length) * spectrumCanvas.width;
+            const y = spectrumCanvas.height - (peakHold[i] * spectrumCanvas.height);
+            if (i === 0) spectrumCtx.moveTo(x, y);
+            else spectrumCtx.lineTo(x, y);
+          }
+          spectrumCtx.stroke();
+        }
+        // Flash refresh indicator
+        spectrumCtx.fillStyle = 'rgba(0,255,255,0.10)';
+        spectrumCtx.fillRect(0, 0, spectrumCanvas.width, 10);
+      }
+      socket.on('spectrum_update', function (data) {
+        if (data.spectrum && Array.isArray(data.spectrum)) {
+          drawSpectrum(data.spectrum);
+          const infoElem = document.getElementById('spectrumInfo');
+          if (infoElem) infoElem.textContent = data.info || '';
+          // Flash refresh indicator
+          const indicator = document.getElementById('spectrumRefreshIndicator');
+          if (indicator) {
+            indicator.style.color = '#ff0';
+            indicator.textContent = '(Live: Refreshed)';
+            setTimeout(() => {
+              indicator.style.color = '#0ff';
+              indicator.textContent = '(Live)';
+            }, 350);
+          }
+        }
+      });
+      // --- Live spectrum polling ---
+      setInterval(() => {
+        socket.emit('request_spectrum');
+      }, 1000);
+
     });
 
     populateForm();
 
-    $('settingsForm').addEventListener('change', async () => {
+    $('recordSettingsForm').addEventListener('change', () => {
       const data = {
         recording: {
           outputFile: $('outputFile').value,
@@ -207,18 +521,36 @@
           squelchThreshold: $('squelchThreshold').value
         }
       };
-      try {
-        const response = await fetch('/save-settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        const result = await response.json();
-        if (!response.ok) alert(result.message || 'Failed to save settings.');
-      } catch (e) {
-        alert('Connection error. Could not save.');
+      socket.emit('save_settings', data);
+    });
+
+    $('transmitSettingsForm').addEventListener('change', () => {
+      const selector = $('transmitInputFile');
+      const data = {
+        transmitting: {
+          inputFile: selector ? selector.value : '',
+          txGain: $('txGain').value || '0',
+          frequency: $('transmitSettingsForm').querySelector('#frequency').value || '0',
+          repeat: $('repeat').checked
+        }
+      };
+      socket.emit('save_settings', data);
+    });
+    // When selector changes, save to settings.json via socket NEW <<<<<<<<<<<<<<<<<<<
+    document.getElementById('transmitInputFile').addEventListener('change', function () {
+      socket.emit('update_transmit_input', { inputFile: this.value });
+    });
+    socket.on('settings_status', function (data) {
+      if (data.status === 'error') {
+        alert(data.message || 'Failed to save settings.');
+      }
+    });
+    socket.on('transmit_input_status', function (data) {
+      if (data.error) {
+        alert(data.error);
       }
     });
   </script>
 </body>
+
 </html>
