@@ -35,16 +35,11 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
+
 4. **Install Python Dependencies:**
 
 ```bash
-pip install -r requirements.txt
-```
-
-If `requirements.txt` is missing, install manually:
-
-```bash
-pip install flask flask-socketio numpy scipy
+pip install flask flask-socketio numpy scipy requests
 ```
 
 
