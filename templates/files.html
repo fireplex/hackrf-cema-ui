@@ -4,11 +4,7 @@
   <meta charset="UTF-8">
   <title>Saved Files</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
-  <style>
-    body { background: #181a1b; color: #eee; font-family: 'Inter', sans-serif; }
-    .table th, .table td { vertical-align: middle; }
-    .file-table-container { max-width: 900px; margin: 40px auto; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary">
@@ -31,7 +27,7 @@
   <div class="file-table-container">
     <h2 class="mb-4">Saved Files</h2>
     {% if files %}
-      <form id="deleteFileForm" method="POST" action="/delete-file" onsubmit="return confirm('Are you sure you want to delete the selected file?');">
+  <form id="deleteFileForm" method="POST" action="/delete-file" onsubmit="return confirm('Are you sure you want to delete the selected file?');" autocomplete="off" aria-label="Delete File">
         <table class="table table-dark table-striped table-bordered">
           <thead>
             <tr>
@@ -47,7 +43,7 @@
           <tbody>
             {% for file in files %}
             <tr>
-              <td><input type="radio" name="filename" value="{{ file.name }}" required></td>
+              <td><input type="radio" name="filename" value="{{ file.name }}" required aria-required="true"></td>
               <td>{{ file.name }}</td>
               <td>{{ file.type }}</td>
               <td>{{ file.size_kb }}</td>

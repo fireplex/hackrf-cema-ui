@@ -10,5 +10,7 @@
     "txGain": 31,
     "frequency": 884000000,
     "repeat": true
-  }
+  },
+  "hackrfRxSN": "",
+  "hackrfTxSN": ""
 }

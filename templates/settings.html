@@ -5,6 +5,7 @@
   <title>HackRF UI - Settings</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
   <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary">
@@ -27,18 +28,18 @@
   <div class="card">
     <div class="card-header">General</div>
     <div class="card-body">
-      <form id="general">
+  <form id="general" autocomplete="off" novalidate aria-label="General Settings">
         <div class="mb-3">
           <label for="hackrfRxSN" class="form-label">HackRF RX Serial Number</label>
-          <select class="form-select" id="hackrfRxSN">
-            <option selected>Select one</option>
+          <select class="form-select" id="hackrfRxSN" required aria-required="true">
+            <option selected disabled>Select one</option>
           </select>
           <div id="hackrfRxSNHelp" class="form-text">The HackRF's S/N to receive on.</div>
         </div>
         <div class="mb-3">
           <label for="hackrfTxSN" class="form-label">HackRF TX Serial Number</label>
-          <select class="form-select" id="hackrfTxSN">
-            <option selected>Select one</option>
+          <select class="form-select" id="hackrfTxSN" required aria-required="true">
+            <option selected disabled>Select one</option>
           </select>
           <div id="hackrfTxSNHelp" class="form-text">The HackRF's S/N to transmit on.</div>
         </div>
@@ -46,100 +47,5 @@
       <div id="saveStatus" class="mt-6 text-center text-sm h-5"></div>
     </div>
   </div>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const rxSelect = document.getElementById('hackrfRxSN');
-      const txSelect = document.getElementById('hackrfTxSN');
 
-      const parseHackrfInfo = rawText => {
-        const result = { devices: [] };
-        const blocks = rawText.trim().split('Found HackRF');
-        const headerBlock = blocks.shift();
-        headerBlock.trim().split('\n').forEach(line => {
-          const [key, ...rest] = line.split(':');
-          if (rest.length) result[key.trim()] = rest.join(':').trim();
-        });
-        blocks.forEach(block => {
-          const device = {};
-          const lines = block.trim().split('\n');
-          for (let i = 0; i < lines.length; i++) {
-            const [key, ...rest] = lines[i].split(':');
-            if (rest.length) {
-              let value = rest.join(':').trim();
-              if (!value && lines[i + 1]) {
-                value = lines[++i].trim();
-              }
-              device[key.trim()] = value;
-            }
-          }
-          if (Object.keys(device).length) result.devices.push(device);
-        });
-        return result;
-      };
-
-      const populateSelectOptions = (select, devices) => {
-        select.innerHTML = '';
-        if (!devices.length) {
-          select.innerHTML = '<option value="">No devices found</option>';
-          select.disabled = true;
-          return;
-        }
-        select.disabled = false;
-        select.innerHTML = '<option value="" disabled>Select a device</option>';
-        devices.forEach(d => {
-          const sn = d['Serial number'];
-          select.innerHTML += `<option value="${sn}">${sn}</option>`;
-        });
-      };
-
-      const updateSettings = async () => {
-        if (rxSelect.selectedIndex === 0 || txSelect.selectedIndex === 0) return;
-        const payload = {
-          hackrfRxSN: rxSelect.value,
-          hackrfTxSN: txSelect.value
-        };
-        try {
-          const res = await fetch('/api/update-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (!res.ok) throw new Error(`Server responded with status: ${res.status}`);
-        } catch (e) {
-          console.error('Failed to update settings:', e);
-        }
-      };
-
-      const setSelectValue = (select, value, available) => {
-        select.value = (value && available.includes(value)) ? value : "";
-      };
-
-      const initializeDeviceSelectors = async () => {
-        let savedSettings = {}, availableDevices = [];
-        try {
-          const res = await fetch('/static/settings.json', { cache: 'no-cache' });
-          if (res.ok) savedSettings = await res.json();
-        } catch {}
-        try {
-          const res = await fetch('/api/hackrf-info');
-          if (!res.ok) throw new Error();
-          const data = await res.json();
-          availableDevices = parseHackrfInfo(data.output).devices || [];
-        } catch {
-          populateSelectOptions(rxSelect, []);
-          populateSelectOptions(txSelect, []);
-          return;
-        }
-        populateSelectOptions(rxSelect, availableDevices);
-        populateSelectOptions(txSelect, availableDevices);
-        const serials = availableDevices.map(d => d['Serial number']);
-        setSelectValue(rxSelect, savedSettings.hackrfRxSN, serials);
-        setSelectValue(txSelect, savedSettings.hackrfTxSN, serials);
-        rxSelect.addEventListener('change', updateSettings);
-        txSelect.addEventListener('change', updateSettings);
-      };
-
-      initializeDeviceSelectors();
-    });
-  </script>
 </body>
