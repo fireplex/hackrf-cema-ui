@@ -66,7 +66,7 @@ python3 app.py
 
 7. **Access the UI:**
 
-Open your browser and go to: [http://localhost:8080](http://localhost:8080)
+Open your browser and go to: https://your-ip:8080
 
 ## Usage
 
