@@ -1,2 +1,33 @@
 *.wav
 *.raw
+
+# Python virtual environment
+venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Log files
+*.log
+start_app.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# App runtime files
+app.pid
+
+# Editor files
+*.swp
+*.swo
+*.bak
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Other
+.env

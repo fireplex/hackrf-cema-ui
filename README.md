@@ -21,11 +21,11 @@ sudo apt update
 sudo apt install -y git python3 python3-venv python3-pip hackrf sox
 ```
 
-2. **Clone the Repository:**
 
 ```bash
 git clone https://github.com/fireplex/hackrf-cema-ui.git
 cd hackrf-cema-ui
+chmod +x start_app.sh stop_app.sh  # Make shell scripts executable
 ```
 
 3. **Set Up Python Virtual Environment:**
@@ -52,12 +52,18 @@ cp static/settings.default.json static/settings.json
 # Ensure you set your hackrfRxSN and hackrfTxSN values in the Web UI
 ```
 
-6. **Run the Web UI:**
+
+6. **Run/Stop the Web UI (Recommended):**
+
+To run the app in the background and keep it running after closing your SSH session, use the provided shell scripts:
 
 ```bash
-python3 app.py
+chmod +x start_app.sh stop_app.sh  # (first time only)
+./start_app.sh                    # Start the app in the background
+./stop_app.sh                     # Stop the app
 ```
 
+The app will log output to `start_app.log` and store its process ID in `app.pid`.
 
 7. **Access the UI:**
 
