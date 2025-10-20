@@ -1,3 +1,5 @@
+
+
 # --- Production-ready Flask-SocketIO App for HackRF-CEMA-UI ---
 import os
 import signal
@@ -10,10 +12,6 @@ from scipy.fft import fft
 from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO, emit
 from logging.config import dictConfig
-
-# Optional: eventlet for production server
-import eventlet
-eventlet.monkey_patch()
 
 # --- Logging Configuration ---
 dictConfig({
@@ -34,7 +32,7 @@ dictConfig({
 
 # --- Flask App & SocketIO ---
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # --- Constants ---
 SETTINGS_FILE_PATH = os.path.join(app.static_folder, 'settings.json')
@@ -175,6 +173,28 @@ def socket_start_recording(data):
             print(f"Failed to start process: {e}")
     emit('recording_status', {"message": f"Recording started. Saving to {output_filename}."})
 
+    # --- Live energy threshold speech detection thread ---
+    def speech_energy_monitor():
+        import time
+        threshold = 5000  # Adjust this value for sensitivity
+        chunk_size = 4096 * 2
+        while recording_process and recording_process.poll() is None:
+            try:
+                if os.path.exists(output_filename) and os.path.getsize(output_filename) >= chunk_size:
+                    with open(output_filename, 'rb') as f:
+                        f.seek(-chunk_size, os.SEEK_END)
+                        raw = f.read(chunk_size)
+                    samples = np.frombuffer(raw, dtype=np.int16)
+                    energy = np.mean(np.abs(samples))
+                    if energy > threshold:
+                        socketio.emit('speech_energy', {'energy': float(energy), 'detected': True})
+                    else:
+                        socketio.emit('speech_energy', {'energy': float(energy), 'detected': False})
+            except Exception as e:
+                pass
+            time.sleep(1)
+    threading.Thread(target=speech_energy_monitor, daemon=True).start()
+
 @socketio.on('stop_recording')
 def socket_stop_recording():
     global recording_process
@@ -258,16 +278,6 @@ def socket_start_transmit(data):
         threading.Thread(target=monitor_transmit, args=(transmit_process,), daemon=True).start()
     except Exception as e:
         emit('transmit_status', {"error": f"Failed to start process: {str(e)}"})
-
-@socketio.on('stop_transmit')
-def socket_stop_transmit():
-    global transmit_process
-    try:
-        subprocess.run(['sudo', 'pkill', '-f', 'hackrf_transfer -t'], check=True)
-        transmit_process = None
-        emit('transmit_status', {"message": "All transmissions stopped successfully."})
-    except Exception as e:
-        emit('transmit_status', {"error": f"Failed to stop transmissions: {str(e)}"})
 
 @socketio.on('update_transmit_input')
 def socket_update_transmit_input(data):

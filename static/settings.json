@@ -3,7 +3,7 @@
         "outputFile": "transmission.raw",
         "lnaGain": "32",
         "vgaGain": "30",
-        "frequency": "884000000",
+        "frequency": "106800000",
         "squelchEnabled": false,
         "squelchThreshold": "30"
     },

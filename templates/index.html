@@ -95,8 +95,15 @@
                 style="background-color: #000; max-height: 256px;">
                 <p class="text-secondary">Recording status will appear here...</p>
               </div>
-              <button type="button" class="btn btn-primary" id="startRecordButton">Start Recording</button>
-              <button type="button" class="btn btn-danger" id="stopRecordButton">Stop Recording</button>
+              <!-- Spectrum Display moved here -->
+              <div class="mt-3">
+                <h6 class="mb-2">Live Spectrum</h6>
+                <canvas id="spectrumDisplay" width="400" height="160"
+                  style="background:#000; border-radius:8px; width:100%; max-width:400px; box-shadow:0 0 12px #0ff8;"></canvas>
+                <div id="spectrumInfo" class="text-secondary small mt-2"></div>
+              </div>
+              <button type="button" class="btn btn-primary mt-3" id="startRecordButton">Start Recording</button>
+              <button type="button" class="btn btn-danger mt-3" id="stopRecordButton">Stop Recording</button>
             </div>
           </div>
 
@@ -143,22 +150,7 @@
     </div>
   </div>
 
-  <div class="accordion mt-4" id="spectrumAccordion">
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="spectrumHeading">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#spectrumCollapse" aria-expanded="true" aria-controls="spectrumCollapse">
-          Spectrum Display <span id="spectrumRefreshIndicator" style="font-size:0.9em; color:#0ff; margin-left:8px;">(Live)</span>
-        </button>
-      </h2>
-      <div id="spectrumCollapse" class="accordion-collapse collapse show" aria-labelledby="spectrumHeading" data-bs-parent="#spectrumAccordion">
-        <div class="accordion-body">
-          <canvas id="spectrumDisplay" width="1024" height="400"
-            style="background:#000; border-radius:8px; width:100%; max-width:1024px; box-shadow:0 0 24px #0ff8;"></canvas>
-          <div id="spectrumInfo" class="text-secondary small mt-2"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Spectrum accordion removed, now inside Record card -->
 
   <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>

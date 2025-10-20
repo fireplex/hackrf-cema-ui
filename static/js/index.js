@@ -80,6 +80,28 @@ async function populateForm() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Speech energy indicator setup
+  const speechIndicator = document.createElement('span');
+  speechIndicator.id = 'speechIndicator';
+  speechIndicator.className = 'ms-3 fw-bold';
+  speechIndicator.style.fontSize = '1.1em';
+  speechIndicator.textContent = '';
+  const spectrumInfo = document.getElementById('spectrumInfo');
+  if (spectrumInfo && spectrumInfo.parentNode) {
+    spectrumInfo.parentNode.insertBefore(speechIndicator, spectrumInfo.nextSibling);
+  }
+
+  socket.on('speech_energy', function(data) {
+    if (data.detected) {
+      speechIndicator.textContent = 'Speech Detected!';
+      speechIndicator.style.color = '#0f0';
+    } else {
+      speechIndicator.textContent = 'No Speech';
+      speechIndicator.style.color = '#888';
+    }
+    // Optionally show energy value for debugging
+    // speechIndicator.title = `Energy: ${data.energy.toFixed(0)}`;
+  });
   // --- Socket.IO event handlers that need DOM elements ---
   socket.on('recording_status', function (data) {
     if (data.hasOwnProperty('running')) {

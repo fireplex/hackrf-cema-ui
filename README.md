@@ -39,7 +39,7 @@ source venv/bin/activate
 4. **Install Python Dependencies:**
 
 ```bash
-pip install flask flask-socketio numpy scipy requests
+pip install flask flask-socketio numpy scipy requests eventlet
 ```
 
 

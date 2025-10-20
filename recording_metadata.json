@@ -5,8 +5,71 @@
     "duration": 3.0
   },
   "transmission_2.raw": {
-    "start_time": "2025-10-16T21:45:52.880870Z",
-    "end_time": "2025-10-16T21:45:56.882607Z",
-    "duration": 4.001737
+    "start_time": "2025-10-20T10:40:09.777275Z",
+    "end_time": "2025-10-20T10:40:25.092828Z",
+    "duration": 15.315553
+  },
+  "transmission.raw": {
+    "start_time": "2025-10-20T10:33:45.414217Z",
+    "end_time": "2025-10-20T10:33:54.236123Z",
+    "duration": 8.821906
+  },
+  "transmission_1.raw": {
+    "start_time": "2025-10-20T10:34:28.634281Z",
+    "end_time": "2025-10-20T10:34:33.517749Z",
+    "duration": 4.883468
+  },
+  "transmission_3.raw": {
+    "start_time": "2025-10-20T10:42:19.370247Z",
+    "end_time": "2025-10-20T10:42:33.325787Z",
+    "duration": 13.95554
+  },
+  "transmission_4.raw": {
+    "start_time": "2025-10-20T10:42:54.916002Z",
+    "end_time": "2025-10-20T10:43:46.930407Z",
+    "duration": 52.014405
+  },
+  "transmission.wav": {
+    "start_time": "2025-10-20T10:43:35.421653Z"
+  },
+  "transmission_5.raw": {
+    "start_time": "2025-10-20T10:52:07.022388Z",
+    "end_time": "2025-10-20T10:52:11.079716Z",
+    "duration": 4.057328
+  },
+  "transmission_6.raw": {
+    "start_time": "2025-10-20T10:52:23.234974Z",
+    "end_time": "2025-10-20T10:52:28.350627Z",
+    "duration": 5.115653
+  },
+  "transmission_7.raw": {
+    "start_time": "2025-10-20T10:53:15.893312Z",
+    "end_time": "2025-10-20T10:53:18.329343Z",
+    "duration": 2.436031
+  },
+  "transmission_8.raw": {
+    "start_time": "2025-10-20T10:53:42.347521Z",
+    "end_time": "2025-10-20T10:53:46.580547Z",
+    "duration": 4.233026
+  },
+  "transmission_9.raw": {
+    "start_time": "2025-10-20T10:53:57.719080Z",
+    "end_time": "2025-10-20T10:54:01.796521Z",
+    "duration": 4.077441
+  },
+  "transmission_10.raw": {
+    "start_time": "2025-10-20T10:55:20.881325Z",
+    "end_time": "2025-10-20T10:55:29.817840Z",
+    "duration": 8.936515
+  },
+  "transmission_11.raw": {
+    "start_time": "2025-10-20T10:55:36.061973Z",
+    "end_time": "2025-10-20T10:56:09.809712Z",
+    "duration": 33.747739
+  },
+  "transmission_12.raw": {
+    "start_time": "2025-10-20T10:56:12.718192Z",
+    "end_time": "2025-10-20T10:56:16.758810Z",
+    "duration": 4.040618
   }
 }
