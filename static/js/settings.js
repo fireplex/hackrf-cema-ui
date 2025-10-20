@@ -55,6 +55,21 @@ document.addEventListener('DOMContentLoaded', function () {
         window.socket.emit('save_settings', newSettings);
     });
 
+    // Force save button logic
+    const forceSaveBtn = document.getElementById('forceSaveBtn');
+    if (forceSaveBtn) {
+        forceSaveBtn.addEventListener('click', function () {
+            const newSettings = {
+                hackrfRxSN: rxSelect.value,
+                hackrfTxSN: txSelect.value
+            };
+            window.socket = window.socket || io();
+            window.socket.emit('save_settings', newSettings);
+            saveStatus.textContent = 'Force saving settings...';
+            saveStatus.className = 'text-info';
+        });
+    }
+
     // Listen for save status
     window.socket = window.socket || io();
     window.socket.on('settings_status', function (data) {

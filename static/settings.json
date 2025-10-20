@@ -1,18 +1,16 @@
 {
-    "recording": {
-        "outputFile": "transmission.raw",
-        "lnaGain": "32",
-        "vgaGain": "30",
-        "frequency": "106800000",
-        "squelchEnabled": false,
-        "squelchThreshold": "30"
-    },
-    "transmitting": {
-        "inputFile": "transmission.raw",
-        "txGain": "31",
-        "frequency": "884000000",
-        "repeat": true
-    },
-    "hackrfRxSN": "0000000000000000d07864dc24985887",
-    "hackrfTxSN": "0000000000000000d07864dc24985887"
+  "recording": {
+    "lnaGain": 32,
+    "vgaGain": 30,
+    "frequency": 884000000,
+    "squelchEnabled": false,
+    "squelchThreshold": 30
+  },
+  "transmitting": {
+    "txGain": 31,
+    "frequency": 884000000,
+    "repeat": true
+  },
+  "hackrfRxSN": "",
+  "hackrfTxSN": ""
 }

@@ -5,6 +5,7 @@
   <title>HackRF UI - Settings</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
   <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.js') }}"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </head>
 <body>
@@ -42,6 +43,10 @@
             <option selected disabled>Select one</option>
           </select>
           <div id="hackrfTxSNHelp" class="form-text">The HackRF's S/N to transmit on.</div>
+        </div>
+        <div class="mb-3">
+          <button type="button" id="forceSaveBtn" class="btn btn-primary">Force Save Settings</button>
+          <div class="form-text">Settings are saved automatically when you change a value. Use this button to force save if needed.</div>
         </div>
       </form>
       <div id="saveStatus" class="mt-6 text-center text-sm h-5"></div>
