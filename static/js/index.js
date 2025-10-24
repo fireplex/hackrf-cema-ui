@@ -122,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (data.message) {
       logToBox(recordLogBox, data.message, 'text-success');
+      //console.log("Recording status message:", data.message);
       const msg = data.message.toLowerCase();
       if (msg.includes('started')) {
         startRxBtn.disabled = true;
@@ -232,8 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
     selector.innerHTML = '';
     files.forEach(file => {
       const option = document.createElement('option');
-      option.value = file;
-      option.textContent = file;
+      option.value = file.name || file;
+      option.textContent = file.name || file;
       selector.appendChild(option);
     });
     // Try to keep the current selection

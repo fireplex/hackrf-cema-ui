@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Saved Files</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary">
@@ -26,39 +26,11 @@
   <br />
   <div class="file-table-container">
     <h2 class="mb-4">Saved Files</h2>
-    {% if files %}
-  <form id="deleteFileForm" method="POST" action="/delete-file" onsubmit="return confirm('Are you sure you want to delete the selected file?');" autocomplete="off" aria-label="Delete File">
-        <table class="table table-dark table-striped table-bordered">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Filename</th>
-              <th>Type</th>
-              <th>Size (KB)</th>
-              <th>Start Time (UTC)</th>
-              <th>End Time (UTC)</th>
-              <th>Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for file in files %}
-            <tr>
-              <td><input type="radio" name="filename" value="{{ file.name }}" required aria-required="true"></td>
-              <td>{{ file.name }}</td>
-              <td>{{ file.type }}</td>
-              <td>{{ file.size_kb }}</td>
-              <td>{{ file.start_time or '-' }}</td>
-              <td>{{ file.end_time or '-' }}</td>
-              <td>{{ file.duration }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        <button type="submit" class="btn btn-danger mt-2">Delete Selected File</button>
-      </form>
-    {% else %}
-      <div class="alert alert-info mt-4">No .raw files found.</div>
-    {% endif %}
+    <!-- Old table/form can be commented out or removed if you want only JS version -->
+    <div id="fileList"></div>
+    <button id="deleteSelectedBtn" class="btn btn-danger mt-2">Delete Selected</button>
+    <button id="refreshFilesBtn" class="btn btn-secondary mt-2">Refresh</button>
   </div>
+  <script src="{{ url_for('static', filename='js/files.js') }}"></script>
 </body>
 </html>

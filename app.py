@@ -99,6 +99,54 @@ recording_process = None
 transmit_process = None
 
 # --- Socket.IO Events ---
+@socketio.on('delete_files')
+def socket_delete_files(data):
+    files = data.get('files', [])
+    deleted = []
+    failed = []
+    for fname in files:
+        path = os.path.join(os.path.dirname(__file__), fname)
+        try:
+            if os.path.exists(path) and fname.endswith('.raw'):
+                os.remove(path)
+                deleted.append(fname)
+            else:
+                failed.append(fname)
+        except Exception:
+            failed.append(fname)
+    msg = f"Deleted: {', '.join(deleted)}" if deleted else "No files deleted."
+    if failed:
+        msg += f" Failed: {', '.join(failed)}"
+    socketio.emit('file_action_status', {"message": msg})
+    notify_processed_files_update()
+
+@socketio.on('rename_file')
+def socket_rename_file(data):
+    old_name = data.get('oldName')
+    new_name = data.get('newName')
+    if not old_name or not new_name or not old_name.endswith('.raw') or not new_name.endswith('.raw'):
+        socketio.emit('file_action_status', {"message": "Invalid file name(s)."})
+        return
+    old_path = os.path.join(os.path.dirname(__file__), old_name)
+    new_path = os.path.join(os.path.dirname(__file__), new_name)
+    try:
+        if os.path.exists(old_path) and not os.path.exists(new_path):
+            os.rename(old_path, new_path)
+            # Also rename metadata entry
+            meta_path = os.path.join(os.path.dirname(__file__), 'recording_metadata.json')
+            meta = get_recording_metadata()
+            if old_name in meta:
+                meta[new_name] = meta.pop(old_name)
+                with open(meta_path, 'w') as f:
+                    json.dump(meta, f, indent=2)
+            msg = f"Renamed {old_name} to {new_name}."
+        else:
+            msg = "Rename failed: file does not exist or new name already exists."
+    except Exception as e:
+        msg = f"Rename failed: {str(e)}"
+    socketio.emit('file_action_status', {"message": msg})
+    notify_processed_files_update()
+    
 @socketio.on('request_spectrum')
 def socket_request_spectrum():
     latest_file = get_latest_recording_file()
@@ -143,7 +191,7 @@ def socket_start_recording(data):
         return
     base_filename = settings.get('recording', {}).get('outputFile', 'output.raw')
     output_filename = get_incremented_filename(base_filename)
-    start_time = datetime.datetime.utcnow().isoformat() + 'Z'
+    start_time = datetime.datetime.now(datetime.UTC).isoformat() + 'Z'
     update_recording_metadata(output_filename, start_time=start_time)
     if recording_process and recording_process.poll() is None:
         emit('recording_status', {"error": "A recording is already in progress."})
@@ -157,7 +205,13 @@ def socket_start_recording(data):
             f"sudo hackrf_transfer -r {output_filename} -f {frequency} -s 2000000 -d {rx_sn}"
         )
         try:
-            recording_process = subprocess.Popen(pipeline, shell=True, start_new_session=True)
+            recording_process = subprocess.Popen(
+                pipeline,
+                shell=True,
+                start_new_session=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
         except Exception as e:
             print(f"Failed to start pipeline: {e}")
     else:
@@ -166,10 +220,53 @@ def socket_start_recording(data):
             '-f', str(frequency), '-l', str(lna_gain), '-g', str(vga_gain), '-d', str(rx_sn)
         ]
         try:
-            recording_process = subprocess.Popen(command, start_new_session=True)
+            recording_process = subprocess.Popen(
+                command,
+                start_new_session=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
         except Exception as e:
             print(f"Failed to start process: {e}")
+
     emit('recording_status', {"message": f"Recording started. Saving to {output_filename}."})
+
+    # --- Monitor hackrf_transfer stdout and stderr ---
+    def monitor_recording_output():
+        global recording_process
+        if not recording_process:
+            return
+        # Read both stdout and stderr
+        def stream(pipe, is_err=False):
+            while True:
+                line = pipe.readline()
+                if not line:
+                    break
+                try:
+                    decoded = line.decode('utf-8', errors='ignore')
+                except Exception:
+                    decoded = str(line)
+                if is_err and "Couldn't transfer any bytes for one second" in decoded:
+                    socketio.emit('recording_status', {"error": "Recording error: Couldn't transfer any bytes for one second."})
+                    # Stop the process and reset state
+                    try:
+                        if recording_process.poll() is None:
+                            os.killpg(recording_process.pid, signal.SIGINT)
+                    except Exception:
+                        pass
+                    finally:
+                        recording_process = None
+                    # Notify frontend to reset buttons
+                    socketio.emit('recording_status', {"running": False})
+                    break
+                socketio.emit('recording_status', {"message": decoded})
+
+        if recording_process.stdout:
+            threading.Thread(target=stream, args=(recording_process.stdout, False), daemon=True).start()
+        if recording_process.stderr:
+            threading.Thread(target=stream, args=(recording_process.stderr, True), daemon=True).start()
+
+    monitor_recording_output()
 
     # --- Live energy threshold speech detection thread ---
     def speech_energy_monitor():
@@ -201,8 +298,13 @@ def socket_stop_recording():
     if latest_file and latest_file in meta and 'start_time' in meta[latest_file]:
         stop_time = datetime.datetime.utcnow().isoformat() + 'Z'
         start_time = meta[latest_file]['start_time']
+        # Remove timezone info to make both naive
         t1 = datetime.datetime.fromisoformat(start_time.replace('Z',''))
         t2 = datetime.datetime.fromisoformat(stop_time.replace('Z',''))
+        if t1.tzinfo is not None:
+            t1 = t1.replace(tzinfo=None)
+        if t2.tzinfo is not None:
+            t2 = t2.replace(tzinfo=None)
         duration = (t2 - t1).total_seconds()
         update_recording_metadata(latest_file, end_time=stop_time, duration=duration)
     if recording_process is None or recording_process.poll() is not None:
@@ -276,6 +378,29 @@ def socket_start_transmit(data):
         threading.Thread(target=monitor_transmit, args=(transmit_process,), daemon=True).start()
     except Exception as e:
         emit('transmit_status', {"error": f"Failed to start process: {str(e)}"})
+        
+@socketio.on('stop_transmit')
+def socket_stop_transmit():
+    global transmit_process
+    if transmit_process is None or transmit_process.poll() is not None:
+        emit('transmit_status', {"error": "No active transmit process to stop."})
+        return
+    try:
+        # Try to send SIGINT to the process only if running
+        try:
+            os.kill(transmit_process.pid, signal.SIGINT)
+        except ProcessLookupError:
+            pass  # Process already exited
+        try:
+            transmit_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            transmit_process.kill()
+    except Exception as e:
+        emit('transmit_status', {"error": f"An error occurred while stopping transmit: {str(e)}"})
+        return
+    finally:
+        transmit_process = None
+    emit('transmit_status', {"message": "Transmit stopped successfully."})
 
 @socketio.on('update_transmit_input')
 def socket_update_transmit_input(data):
@@ -303,8 +428,22 @@ def socket_request_processed_files():
 def notify_processed_files_update():
     import glob
     files = glob.glob(os.path.join(os.path.dirname(__file__), '*.raw'))
-    files = [os.path.basename(f) for f in files]
-    socketio.emit('processed_files_update', {'files': files})
+    meta = get_recording_metadata()
+    file_objs = []
+    for f in files:
+        stat = os.stat(f)
+        name = os.path.basename(f)
+        size_kb = stat.st_size // 1024
+        info = meta.get(name, {})
+        file_objs.append({
+            'name': name,
+            'type': 'raw',
+            'size_kb': size_kb,
+            'start_time': info.get('start_time', '-'),
+            'end_time': info.get('end_time', '-'),
+            'duration': info.get('duration', '-')
+        })
+    socketio.emit('processed_files_update', {'files': file_objs})
 
 # --- Flask Routes ---
 @app.route('/')
